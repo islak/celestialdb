@@ -1,9 +1,11 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 import psycopg2
 import os
 from dotenv import load_dotenv
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
 
 # Load environment variables from .env file
 load_dotenv()
@@ -18,10 +20,10 @@ db_params = {
 }
 
 # Function to fetch data from PostgreSQL
-def fetch_data(query):
+def fetch_data(query, params=None):
     connection = psycopg2.connect(**db_params)
     cursor = connection.cursor()
-    cursor.execute(query)
+    cursor.execute(query, params)
     data = cursor.fetchall()
     cursor.close()
     connection.close()
@@ -30,6 +32,13 @@ def fetch_data(query):
 @app.route('/')
 def index():
     return 'HALO'
+
+@app.route('/search')
+def search():
+    name = request.args.get('name')
+    query = "SELECT * FROM galaxy WHERE name ILIKE %s"
+    data = fetch_data(query, (f"%{name}%",))
+    return jsonify({'results': data})
 
 
 # Route to return JSON data for galaxies
@@ -59,6 +68,7 @@ def moons():
     query = "SELECT * FROM moon"
     data = fetch_data(query)
     return jsonify({'moons': data})
+
 
 if __name__ == '__main__':
     app.run(debug=True)
